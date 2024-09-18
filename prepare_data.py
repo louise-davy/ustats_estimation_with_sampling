@@ -40,8 +40,6 @@ with open(config_file, "r") as file:
 # Get parameters for data preparation
 RATIO_VAL = float(config["RATIO_VAL"])
 N_VAL = int(config["N_VAL"])
-SAMPLING_TYPE = config["SAMPLING_TYPE"]
-
 
 # Get data
 X_train, y_train, X_test, y_test = get_data()
@@ -67,9 +65,11 @@ dict_data = {
     "y_val": y_val,
     "X_test": X_test,
     "y_test": y_test,
-    "time_creation": np.array(date),
+    "time_creation": np.array(date),  # just in case
 }
 
 # Save data
-
-np.savez(f"data/data_{SAMPLING_TYPE}_{RATIO_VAL}_{N_VAL}.npz", **dict_data)
+n_train = X_train.shape[0]
+n_val = X_val.shape[0]
+n_test = X_test.shape[0]
+np.savez(f"data/data_{n_train}_{n_val}_{n_test}.npz", **dict_data)

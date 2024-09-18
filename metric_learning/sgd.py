@@ -14,13 +14,13 @@ def run_sgd(
     y_train: np.array,
     X_val: np.array,
     y_val: np.array,
-    fast_X_val: np.array,
     n_iter: int,
     batch_size: int,
     b: int,
     M: np.array,
     lr: float,
     sampling_type: str,
+    sample_pairs: bool,
     times: list,
     print_every: int = 500,
     W=None,
@@ -32,7 +32,7 @@ def run_sgd(
             W = np.ones(X_train.shape[0]) / X_train.shape[0]
     history = {}
     losses = []
-    losses.append(loss(M, X_val, y_val, b=b, fast_X=fast_X_val))
+    losses.append(loss(M, X_val, y_val, b=b))
     Ms = []
     Ms.append(M)
     for i in range(n_iter):
@@ -53,7 +53,7 @@ def run_sgd(
                 break
 
         # score on val
-        losses.append(loss(M, X_val, y_val, b=b, fast_X=fast_X_val))
+        losses.append(loss(M, X_val, y_val, b=b))
 
         if i % print_every == 0:
             print(f"iter {i+1}, score {losses[i+1]}")

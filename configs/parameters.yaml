@@ -1,0 +1,10 @@
+SAMPLING_TYPE :
+ - 'monte_carlo'
+ - 'poisson'
+ - 'standard_mini_batch'
+SAMPLING_PAIRS:
+ - True
+ - False
+M_INITIALISATION :
+ - "identity"
+ - "random"

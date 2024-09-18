@@ -1,0 +1,6 @@
+LR: 0.001
+BATCH_SIZE: 64
+RATIO_VAL: 0
+N_VAL : 10000
+SAMPLING_TYPE : "inequal_without_replacement"
+M_INITIALISATION : "identity"

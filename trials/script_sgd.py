@@ -9,7 +9,9 @@ def create_fast(X):
     """Create bigger matrix filled with x - y pairs."""
     n, d = X.shape
     pairs = np.kron(np.ones((n, 1)), X) - np.kron(X, np.ones((n, 1)))
+    print("pairs_shape", pairs.shape)
     rk1_matrices = np.kron(np.ones((1, d)), pairs) * np.kron(pairs, np.ones((1, d)))
+    print("rk1_matrices_shape", rk1_matrices.shape)
     return rk1_matrices
 
 
@@ -60,7 +62,7 @@ def positive_cone(M):
 
 if __name__ == "__main__":
     n = 100
-    d = 10
+    d = 2
     mu_0 = np.zeros(d)
     mu_0[0] = 1.0
     mu_1 = np.zeros(d)
@@ -75,7 +77,7 @@ if __name__ == "__main__":
 
     step = 5e-4
     M = np.eye(d)
-    n_iter = 5000
+    n_iter = 500
     b = 1.1
     score = np.zeros(n_iter + 1)
     score[0] = loss(M, X, y, b=b)
@@ -96,8 +98,6 @@ if __name__ == "__main__":
 
     plt.subplot(2, 2, 4)
     sqrt_M = scipy.linalg.sqrtm(M)
-    print(sqrt_M.shape)
-    print(X.shape)
     transf_X = X @ sqrt_M
     plt.scatter(
         transf_X[:, 0], transf_X[:, 1], color=colors[(y > 0) * y], s=3, alpha=0.5
@@ -107,4 +107,5 @@ if __name__ == "__main__":
 
     plt.subplot(2, 2, 2)
     plt.imshow(M)
+    plt.tight_layout()
     plt.show()

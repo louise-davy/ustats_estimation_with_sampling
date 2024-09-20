@@ -37,38 +37,19 @@ def loss(M, X, y, b=2, fast_X=None):
     return np.average(hinge(all_dists, pair_y, b))
 
 
-def grad_dist(M, X, y, b=2, fast_X=None):
-    """Gradient of the hinge loss."""
-    if fast_X is None:
-        fast_X = create_fast(X)
-    pair_y = np.kron(y, y)
-    all_dists = fast_X @ M.ravel()
-    return np.sum(
-        np.outer(pair_y * (hinge(all_dists, pair_y, b) > 0), np.ones(fast_X.shape[1]))
-        * fast_X,
-        axis=0,
-    ).reshape(M.shape)
-
-
-def positive_cone(M):
-    """Project on the semi-definite positive cone."""
-    eigval, eigvec = np.linalg.eigh(M)
-    projected_eigval = (eigval > 0) * eigval
-    return (projected_eigval * eigvec.T) @ eigvec
-
-
 def create_mini_batch(
     X, y, batch_size, sampling_type="equal_without_replacement", W=None
 ):
     """Randomly select a mini-batch from the data."""
     if sampling_type == "equal_without_replacement":
-        indices = np.random.choice(X.shape[0], batch_size, replace=False)
+        raise NotImplementedError("This sampling type is not implemented yet.")
+        # indices = np.random.choice(X.shape[0], batch_size, replace=False)
     elif sampling_type == "equal_with_replacement":  # monte carlo
         indices = np.random.choice(X.shape[0], batch_size, replace=True)
     elif sampling_type == "inequal_without_replacement":  # poisson
         indices = np.random.choice(X.shape[0], batch_size, replace=False, p=W)
 
-    return X[indices], y[indices], indices
+    return X[indices], y[indices], W[indices], indices
 
 
 def get_data():
@@ -142,3 +123,13 @@ def plot_results(M, losses):
     plt.imshow(M)
     plt.colorbar()
     plt.show()
+
+
+def initialise_M(m_initialisation, d):
+    if m_initialisation == "identity":
+        M = np.eye(d)
+    elif m_initialisation == "random":
+        M = np.random.randn(d, d)
+    else:
+        raise ValueError("m_initialisation should be 'identity' or 'random'.")
+    return M

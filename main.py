@@ -1,12 +1,12 @@
 import numpy as np
 from metric_learning.utils import (
     plot_results,
+    initalise_M,
 )
 from metric_learning.sgd import run_sgd
 import os
 import yaml
 import argparse
-import sys
 
 # Parse arguments
 parser = argparse.ArgumentParser(
@@ -43,19 +43,21 @@ N_ITER = config["N_ITER"]
 N_RUNS = config["N_RUNS"]
 B = config["B"]
 BATCH_SIZE = config["BATCH_SIZE"]
+DATA_PATH = config["DATA_PATH"]
+DATA_FILE = config["DATA_FILE"]
 
 # Get parameters to loop over
 with open("configs/parameters.yaml", "r") as file:
     parameters = yaml.safe_load(file)
 
-print(parameters)
-sys.exit()
-SAMPLING_TYPE = args.sampling_type
-M_INITIALISATION = args.m_initialisation
-SAMPLE_PAIRS = args.pairs
+M_INITIALISATIONS = parameters["M_INITIALISATION"]
+SAMPLING_TYPES = parameters["SAMPLING_TYPE"]
+SAMPLE_PAIRS = parameters["SAMPLE_PAIRS"]
+
 
 # Load data
-npz_data = np.load("data/mnist.npz")
+path_to_data = os.path.join(DATA_PATH, DATA_FILE)
+npz_data = np.load(path_to_data)
 X_train = npz_data["X_train"]
 y_train = npz_data["y_train"]
 X_val = npz_data["X_val"]
@@ -63,33 +65,30 @@ y_val = npz_data["y_val"]
 X_test = npz_data["X_test"]
 y_test = npz_data["y_test"]
 
+for sample_pair in SAMPLE_PAIRS:
+    for sampling_type in SAMPLING_TYPES:
+        for m_initialisation in M_INITIALISATIONS:
+            # Initialize M
+            M = initalise_M(m_initialisation, X_train.shape[1])
 
-# Initialize M
-if M_INITIALISATION == "identity":
-    M = np.eye(X_train.shape[1])
-elif M_INITIALISATION == "random":
-    M = np.random.randn(X_train.shape[1], X_train.shape[1])
-else:
-    raise ValueError("M_INITIALISATION should be 'identity' or 'random'.")
+            # Run SGD
+            M, history, times = run_sgd(
+                X_train=X_train,
+                y_train=y_train,
+                X_val=X_val,
+                y_val=y_val,
+                n_iter=N_ITER,
+                batch_size=BATCH_SIZE,
+                b=B,
+                M=M,
+                lr=STEP,
+                sampling_type=sampling_type,
+                sample_pairs=sample_pair,
+                times=[],
+                print_every=500,
+                W=None,
+            )
 
-# Run SGD
-M, history, times = run_sgd(
-    X_train=X_train,
-    y_train=y_train,
-    X_val=X_val,
-    y_val=y_val,
-    n_iter=N_ITER,
-    batch_size=BATCH_SIZE,
-    b=B,
-    M=M,
-    lr=STEP,
-    sampling_type=SAMPLING_TYPE,
-    sample_pairs=SAMPLE_PAIRS,
-    times=[],
-    print_every=500,
-    W=None,
-)
+            # Plot results
 
-# Plot results
-
-plot_results(M, history["losses"])
+            plot_results(M, history["losses"])

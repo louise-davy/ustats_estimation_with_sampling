@@ -3,3 +3,4 @@ data
 *.png
 *.npz
 bias*
+__pycache__

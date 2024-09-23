@@ -7,7 +7,7 @@ from metric_learning.utils import hinge
 from metric_learning.sgd import positive_cone, loss
 
 # Config
-N_ITER = 2
+N_ITER = 5
 B = 2
 LR = 0.01
 batch_sizes_no_pair = np.arange(3, 20, 1)
@@ -50,6 +50,9 @@ def erm(batches, sample_pair, M, LR, X_val, y_val, B):
         X_batch = [b[0] for b in batch]
         y_batch = [b[1] for b in batch]
 
+        if np.all(y_batch == 0):
+            continue
+
         if sample_pair:
             Wij_batch = [b[2] for b in batch]
         else:
@@ -58,13 +61,21 @@ def erm(batches, sample_pair, M, LR, X_val, y_val, B):
 
         X_batch = np.array(X_batch)
         y_batch = np.array(y_batch)
-        all_dists = np.array(X_batch @ M @ X_batch.T)  # (batch_size, batch_size)
-        hinge_mask = hinge(all_dists, y_batch, B) > 0  # (batch_size, batch_size)
-        hinge_mask_sum = np.sum(hinge_mask, axis=1)  # (batch_size,)
-        gradient = np.sum(
-            (y_batch[:, None] * hinge_mask_sum[:, None]) * X_batch,  # (batch_size, d)
-            axis=0,
-        )
+
+        gradient = np.zeros_like(M)
+
+        for x, y in zip(X_batch, y_batch):
+            dist = x @ M @ x.T
+            hinge_val = hinge(dist, y, B)
+            if hinge_val > 0:
+                gradient += y * (x @ x.T)
+
+        gradient /= X_batch.shape[0]
+
+        # all_dists = np.array(X_batch @ M @ X_batch.T)  # (batch_size, batch_size)
+        # hinge_mask = hinge(all_dists, y_batch, B) > 0  # (batch_size, batch_size)
+        # hinge_mask_sum = np.sum(hinge_mask, axis=1)  # (batch_size,)
+        # gradient = grad_dist(M, X_batch, y_batch, B)  # (d, d)
 
         M = positive_cone(M - LR * gradient)
 
@@ -93,6 +104,22 @@ def save_loss(losses_for_this_config, replacement, equal_prob, all_means, all_st
     return all_means, all_stds
 
 
+def grad_dist(M, X, y, b=2):
+    """Gradient of the hinge loss with pairs as input."""
+    p, d = X.shape  # p is the number of pairs
+    gradient = np.zeros_like(M)
+
+    for i in range(p):
+        # Calculate the distance for the current pair
+        all_dists = np.dot(X[i], M)
+
+        # Check if the hinge loss is greater than 0
+        if hinge(all_dists, y[i], b) > 0:
+            gradient += y[i] * X[i]  # Adjust as needed for your gradient computation
+
+    return gradient.reshape(M.shape)
+
+
 def run_experiment(
     replacement,
     equal_prob,
@@ -117,7 +144,9 @@ def run_experiment(
     stds_config = []
 
     for batch_size in batch_sizes:
-        M = np.random.randn(X_train.shape[1], X_train.shape[1])
+        # M = np.random.randn(X_train.shape[1], X_train.shape[1])
+        M = np.eye(X_train.shape[1])
+
         # Handle batch size computation based on whether we're using pairs or not
         if pairs:
             print(f"Batch size: {batch_size}")
@@ -185,8 +214,8 @@ for replacement in replacements:
 
         # Individual observations case
         (
-            means_config,
-            stds_config,
+            means_config_obs,
+            stds_config_obs,
             all_mean_losses_observation,
             all_std_losses_observation,
         ) = run_experiment(
@@ -206,51 +235,66 @@ for replacement in replacements:
             all_std_losses=all_std_losses_observation,
         )
 
-        # Plot for individual observations
-        plt.errorbar(
-            [
-                int(batch)
-                for batch in batch_sizes_no_pair * (batch_sizes_no_pair - 1) / 2
-            ],
-            means_config,
-            yerr=stds_config,
-            label=f"repl: {replacement}, eq: {equal_prob}, pairs=False",
+        # Pairs case
+        (
+            means_config_pairs,
+            stds_config_pairs,
+            all_mean_losses_pairs,
+            all_std_losses_pairs,
+        ) = run_experiment(
+            replacement=replacement,
+            equal_prob=equal_prob,
+            pairs=True,
+            batch_sizes=batch_sizes_pairs,
+            X_train=X_train,
+            y_train=y_train,
+            W_train=W_train,
+            N_ITER=N_ITER,
+            X_val=X_val,
+            y_val=y_val,
+            LR=LR,
+            B=B,
+            all_mean_losses=all_mean_losses_pairs,
+            all_std_losses=all_std_losses_pairs,
         )
+
+        plt.plot(
+            batch_sizes_pairs,
+            means_config_obs,
+            # yerr=stds_config_obs,
+            label=f"Naive sampling",
+            color="blue",
+        )
+
+        # add standard deviation as dotted line above and below the mean
+        plt.fill_between(
+            batch_sizes_pairs,
+            np.array(means_config_obs) - np.array(stds_config_obs),
+            np.array(means_config_obs) + np.array(stds_config_obs),
+            color="blue",
+            alpha=0.2,
+        )
+
+        plt.plot(
+            batch_sizes_pairs,
+            means_config_pairs,
+            # yerr=stds_config_pairs,
+            label=f"Pair sampling",
+            color="red",
+        )
+
+        plt.fill_between(
+            batch_sizes_pairs,
+            np.array(means_config_pairs) - np.array(stds_config_pairs),
+            np.array(means_config_pairs) + np.array(stds_config_pairs),
+            color="red",
+            alpha=0.2,
+        )
+
         plt.xlabel("Batch size")
         plt.ylabel("Loss")
         plt.legend()
-        plt.show()
-
-        # Pairs case
-        means_config, stds_config, all_mean_losses_pairs, all_std_losses_pairs = (
-            run_experiment(
-                replacement=replacement,
-                equal_prob=equal_prob,
-                pairs=True,
-                batch_sizes=batch_sizes_pairs,
-                X_train=X_train,
-                y_train=y_train,
-                W_train=W_train,
-                N_ITER=N_ITER,
-                X_val=X_val,
-                y_val=y_val,
-                LR=LR,
-                B=B,
-                all_mean_losses=all_mean_losses_pairs,
-                all_std_losses=all_std_losses_pairs,
-            )
-        )
-
-        # Plot for pairs
-        plt.errorbar(
-            batch_sizes_pairs,
-            means_config,
-            yerr=stds_config,
-            label=f"repl: {replacement}, eq: {equal_prob}, pairs=True",
-        )
-        plt.xlabel("Batch size (pairs)")
-        plt.ylabel("Loss")
-        plt.legend()
+        plt.title(f"Comparison of Loss - repl: {replacement}, eq: {equal_prob}")
         plt.show()
 
 

@@ -1,4 +1,5 @@
 import numpy as np
+import scipy
 from metric_learning.utils import (
     get_data,
     get_validation_dataset,
@@ -8,6 +9,7 @@ from datetime import datetime
 import yaml
 import argparse
 import os
+import pytorch
 
 # Parse arguments
 parser = argparse.ArgumentParser(
@@ -49,6 +51,9 @@ X_train, y_train, X_val, y_val = get_validation_dataset(
     X_train, y_train, ratio=RATIO_VAL, n_val=N_VAL
 )
 
+def extract_features_cnn(X):
+
+
 # Transform data
 X_train, pca = transform_data(X_train, fit=True, pca=None)
 X_val, _ = transform_data(X_val, fit=False, pca=pca)
@@ -72,4 +77,7 @@ dict_data = {
 n_train = X_train.shape[0]
 n_val = X_val.shape[0]
 n_test = X_test.shape[0]
-np.savez(f"data/data_{n_train}_{n_val}_{n_test}.npz", **dict_data)
+
+
+scipy.io.savemat("test.mat", dict_data)
+# np.savez(f"data/data_{n_train}_{n_val}_{n_test}.npz", **dict_data)
